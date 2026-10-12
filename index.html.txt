@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LUMOS VIP — Premium Streaming</title>
+<style>
+/* ============================================================
+   LUMOS VIP — Premium Private Streaming Platform (Demo)
+   ------------------------------------------------------------
+   SECURITY NOTICE (read before deploying):
+   • This is a FRONTEND-ONLY demo. The password gate below is a
+     cosmetic gate, NOT real security. Anyone can read this file.
+   • localStorage is not safe for real auth, payments or a shared
+     video library (data never leaves the visitor's browser).
+   • Real deployment REQUIRES: server-side authentication,
+     a database, verified payment webhooks (Stripe / PayHere),
+     signed/secure video delivery (e.g. HLS + DRM), and backend
+     access control. NEVER hardcode API secret keys in HTML.
+   ============================================================ */
+:root{
+  --bg:#08060f;
+  --bg2:#0e0a1c;
+  --panel:#141024;
+  --panel2:#1b1533;
+  --line:rgba(168,140,255,.14);
+  --purple:#8b5cf6;
+  --purple2:#a855f7;
+  --violet:#c084fc;
+  --text:#efeaff;
+  --muted:#a99fd0;
+  --danger:#fb7185;
+  --ok:#34d399;
+  --gold:#fbbf24;
+  --radius:18px;
+  --shadow:0 20px 60px rgba(0,0,0,.55);
+  --glow:0 0 40px rgba(139,92,246,.35);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  background:
+    radial-gradient(1200px 800px at 85% -10%, rgba(139,92,246,.22), transparent 60%),
+    radial-gradient(900px 700px at -10% 110%, rgba(168,85,247,.16), transparent 60%),
+    linear-gradient(160deg,var(--bg),var(--bg2) 60%,var(--bg));
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+::selection{background:rgba(139,92,246,.45)}
+button{font-family:inherit;cursor:pointer}
+input,textarea,select{font-family:inherit}
+img{max-width:100%}
+
+/* ---------- scrollbar ---------- */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:linear-gradient(var(--purple),var(--purple2));border-radius:8px}
+
+/* ---------- LOGIN SCREEN ---------- */
+#loginScreen{
+  position:fixed;inset:0;z-index:100;
+  display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(1000px 600px at 70% 20%, rgba(139,92,246,.25), transparent 60%),
+    radial-gradient(800px 500px at 20% 90%, rgba(192,132,252,.18), transparent 60%),
+    linear-gradient(150deg,#07050e,#0d0919 55%,#07050e);
+  padding:20px;
+  transition:opacity .6s ease, visibility .6s;
+}
+#loginScreen.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.login-card{
+  width:100%;max-width:420px;
+  background:linear-gradient(165deg,rgba(27,21,51,.92),rgba(16,12,32,.94));
+  border:1px solid var(--line);
+  border-radius:26px;
+  padding:44px 36px 36px;
+  box-shadow:var(--shadow), var(--glow);
+  backdrop-filter:blur(14px);
+  text-align:center;
+  animation:floatIn .8s cubic-bezier(.2,.9,.3,1.2) both;
+  position:relative;overflow:hidden;
+}
+.login-card::before{
+  content:"";position:absolute;top:-60%;left:-30%;width:160%;height:120%;
+  background:conic-gradient(from 0deg,transparent,rgba(168,85,247,.12),transparent 30%);
+  animation:spin 9s linear infinite;pointer-events:none;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes floatIn{from{opacity:0;transform:translateY(30px) scale(.96)}to{opacity:1;transform:none}}
+.brand-logo{
+  width:74px;height:74px;margin:0 auto 18px;border-radius:22px;
+  background:linear-gradient(140deg,var(--purple),var(--purple2) 60%,var(--violet));
+  display:flex;align-items:center;justify-content:center;
+  font-size:36px;box-shadow:0 0 34px rgba(139,92,246,.6);
+  animation:pulseGlow 3s ease-in-out infinite;
+}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 24px rgba(139,92,246,.45)}50%{box-shadow:0 0 48px rgba(168,85,247,.8)}}
+.login-card h1{font-size:28px;letter-spacing:3px;font-weight:800;
+  background:linear-gradient(90deg,#fff,var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.login-card .sub{color:var(--muted);font-size:13px;margin:8px 0 30px;letter-spacing:.5px}
+.field{position:relative;margin-bottom:16px;text-align:left}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:7px;letter-spacing:1px;text-transform:uppercase}
+.field input,.field textarea,.field select{
+  width:100%;padding:13px 14px;border-radius:12px;
+  background:rgba(10,7,20,.7);border:1px solid var(--line);
+  color:var(--text);font-size:14px;outline:none;transition:.25s;
+}
+.field textarea{resize:vertical;min-height:80px}
+.field input:focus,.field textarea:focus,.field select:focus{
+  border-color:var(--purple);box-shadow:0 0 0 3px rgba(139,92,246,.22)}
+.eye-btn{
+  position:absolute;right:10px;bottom:9px;background:none;border:none;color:var(--muted);font-size:17px;
+}
+.login-error{
+  display:none;margin:0 0 14px;padding:11px 14px;border-radius:12px;font-size:13px;
+  background:rgba(251,113,133,.12);border:1px solid rgba(251,113,133,.4);color:#ffb3c0;
+  animation:shake .45s;
+}
+.login-error.show{display:block}
+@keyframes shake{0%,100%{transform:none}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  border:none;border-radius:12px;padding:13px 22px;font-size:14px;font-weight:700;
+  letter-spacing:.4px;transition:.25s;color:#fff;
+}
+.btn-primary{background:linear-gradient(135deg,var(--purple),var(--purple2));box-shadow:0 8px 24px rgba(139,92,246,.4)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(168,85,247,.55)}
+.btn-ghost{background:rgba(139,92,246,.12);border:1px solid var(--line);color:var(--violet)}
+.btn-ghost:hover{background:rgba(139,92,246,.22)}
+.btn-danger{background:rgba(251,113,133,.15);border:1px solid rgba(251,113,133,.4);color:#ffb3c0}
+.btn-danger:hover{background:rgba(251,113,133,.3)}
+.btn-block{width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+.login-note{margin-top:22px;font-size:11.5px;color:var(--muted);line-height:1.6}
+.demo-hint{
+  display:inline-block;margin-top:10px;padding:4px 12px;border-radius:999px;font-size:10.5px;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);
+  border:1px solid rgba(251,191,36,.35);background:rgba(251,191,36,.08);
+}
+
+/* ---------- APP SHELL ---------- */
+#app{display:none;min-height:100vh;animation:fadeIn .6s both}
+#app.active{display:block}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.navbar{
+  position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;gap:18px;
+  padding:14px 28px;
+  background:rgba(8,6,15,.75);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--line);
+}
+.nav-brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:2.5px;font-size:17px}
+.nav-brand .mini-logo{
+  width:38px;height:38px;border-radius:12px;font-size:19px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(140deg,var(--purple),var(--purple2));box-shadow:0 0 18px rgba(139,92,246,.5);
+}
+.nav-brand span{background:linear-gradient(90deg,#fff,var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.nav-links{display:flex;gap:6px;margin-left:auto;align-items:center;flex-wrap:wrap}
+.nav-link{
+  background:none;border:none;color:var(--muted);font-size:13.5px;font-weight:600;
+  padding:9px 15px;border-radius:10px;transition:.22s;letter-spacing:.4px;
+}
+.nav-link:hover{color:var(--text);background:rgba(139,92,246,.12)}
+.nav-link.active{color:#fff;background:linear-gradient(135deg,var(--purple),var(--purple2));box-shadow:0 6px 18px rgba(139,92,246,.4)}
+#hamburger{display:none;background:none;border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:20px;padding:7px 12px}
+.container{max-width:1240px;margin:0 auto;padding:34px 26px 70px}
+
+/* ---------- VIEWS ---------- */
+.view{display:none;animation:fadeUp .45s both}
+.view.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.hero{
+  border-radius:26px;padding:56px 44px;margin-bottom:36px;position:relative;overflow:hidden;
+  background:linear-gradient(120deg,rgba(139,92,246,.22),rgba(20,14,40,.7) 55%),var(--panel);
+  border:1px solid var(--line);box-shadow:var(--shadow);
+}
+.hero::after{content:"";position:absolute;right:-90px;top:-90px;width:320px;height:320px;border-radius:50%;
+  background:radial-gradient(circle,rgba(192,132,252,.35),transparent 70%);filter:blur(10px)}
+.hero h2{font-size:clamp(26px,4vw,42px);font-weight:800;line-height:1.15;max-width:640px;
+  background:linear-gradient(90deg,#fff 30%,var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{color:var(--muted);margin:14px 0 26px;max-width:560px;font-size:15px;line-height:1.7}
+.hero-stats{display:flex;gap:34px;margin-top:34px;flex-wrap:wrap}
+.hstat b{display:block;font-size:26px;background:linear-gradient(90deg,var(--violet),#fff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hstat small{color:var(--muted);font-size:12px;letter-spacing:1px;text-transform:uppercase}
+
+.section-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:8px 0 22px}
+.section-head h3{font-size:22px;font-weight:800;letter-spacing:.5px}
+.section-head .count-pill{font-size:11px;padding:4px 12px;border-radius:999px;background:rgba(139,92,246,.15);border:1px solid var(--line);color:var(--violet);letter-spacing:1px}
+
+/* toolbar */
+.toolbar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:26px}
+.search-wrap{position:relative;flex:1;min-width:220px}
+.search-wrap input{
+  width:100%;padding:13px 16px 13px 44px;border-radius:13px;font-size:14px;
+  background:var(--panel);border:1px solid var(--line);color:var(--text);outline:none;transition:.25s;
+}
+.search-wrap input:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(139,92,246,.2)}
+.search-wrap .s-ico{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.chip-row{display:flex;gap:8px;flex-wrap:wrap}
+.chip{
+  background:var(--panel);border:1px solid var(--line);color:var(--muted);
+  border-radius:999px;padding:9px 18px;font-size:13px;font-weight:600;transition:.22s;
+}
+.chip:hover{color:var(--text);border-color:var(--purple)}
+.chip.active{background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff;border-color:transparent;box-shadow:0 6px 16px rgba(139,92,246,.4)}
+
+/* ---------- VIDEO CARDS ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:24px}
+.vcard{
+  background:linear-gradient(170deg,var(--panel2),var(--panel));
+  border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
+  transition:.3s cubic-bezier(.2,.8,.3,1.2);cursor:pointer;position:relative;
+}
+.vcard:hover{transform:translateY(-7px);border-color:rgba(168,85,247,.5);box-shadow:var(--shadow),0 0 30px rgba(139,92,246,.25)}
+.thumb{
+  position:relative;aspect-ratio:16/9;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+}
+.thumb .grad{position:absolute;inset:0;transition:transform .5s}
+.vcard:hover .thumb .grad{transform:scale(1.08)}
+.thumb .emoji{position:relative;font-size:56px;filter:drop-shadow(0 8px 18px rgba(0,0,0,.5));transition:.4s}
+.vcard:hover .thumb .emoji{transform:scale(1.15) rotate(-4deg)}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.dur{
+  position:absolute;right:10px;bottom:10px;padding:3px 10px;border-radius:8px;
+  background:rgba(0,0,0,.72);font-size:11.5px;font-weight:700;letter-spacing:.5px;z-index:2;
+}
+.badge-owned{
+  position:absolute;left:10px;top:10px;padding:4px 11px;border-radius:999px;font-size:10.5px;font-weight:800;
+  letter-spacing:1px;background:rgba(52,211,153,.9);color:#052e1b;z-index:2;
+}
+.vbody{padding:16px 17px 18px}
+.vbody .cat{font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--violet);font-weight:700}
+.vbody h4{font-size:16px;font-weight:700;margin:7px 0 6px;line-height:1.35}
+.vbody p{font-size:12.5px;color:var(--muted);line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vfoot{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
+.price{font-size:17px;font-weight:800;background:linear-gradient(90deg,var(--gold),#fde68a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.price.free{background:linear-gradient(90deg,var(--ok),#a7f3d0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.mini-btn{font-size:12px;padding:8px 15px;border-radius:9px}
+
+/* empty state */
+.empty{
+  text-align:center;padding:70px 24px;border:1px dashed rgba(168,85,247,.35);border-radius:22px;
+  background:rgba(20,16,36,.5);
+}
+.empty .big{font-size:56px;margin-bottom:14px;display:inline-block;animation:bob 3s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.empty h4{font-size:19px;margin-bottom:8px}
+.empty p{color:var(--muted);font-size:13.5px;max-width:420px;margin:0 auto 18px;line-height:1.6}
+
+/* ---------- MODALS ---------- */
+.modal-backdrop{
+  position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;
+  background:rgba(5,3,12,.78);backdrop-filter:blur(8px);padding:18px;
+}
+.modal-backdrop.open{display:flex;animation:fadeIn .3s}
+.modal{
+  width:100%;max-width:640px;max-height:92vh;overflow-y:auto;
+  background:linear-gradient(170deg,var(--panel2),var(--panel));
+  border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow),var(--glow);
+  animation:popIn .35s cubic-bezier(.2,.9,.3,1.25) both;
+}
+@keyframes popIn{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:none}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--line)}
+.modal-head h3{font-size:18px;font-weight:800;letter-spacing:.5px}
+.x-btn{background:rgba(139,92,246,.12);border:1px solid var(--line);color:var(--muted);width:34px;height:34px;border-radius:10px;font-size:16px;transition:.2s}
+.x-btn:hover{color:#fff;background:rgba(251,113,133,.3);border-color:rgba(251,113,133,.5)}
+.modal-body{padding:24px}
+.player-wrap{background:#000;border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+.player-wrap video{width:100%;display:block;max-height:56vh}
+.detail-title{font-size:20px;font-weight:800;margin:18px 0 6px}
+.detail-desc{color:var(--muted);font-size:13.5px;line-height:1.65}
+.meta-row{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0 20px}
+.meta-tag{font-size:11.5px;padding:5px 12px;border-radius:999px;background:rgba(139,92,246,.12);border:1px solid var(--line);color:var(--violet);letter-spacing:.5px}
+.lock-box{
+  text-align:center;padding:34px 22px;border-radius:16px;margin-top:6px;
+  background:linear-gradient(150deg,rgba(139,92,246,.14),rgba(20,14,40,.6));
+  border:1px solid rgba(168,85,247,.35);
+}
+.lock-box .lock{font-size:44px;margin-bottom:12px}
+.lock-box h4{font-size:18px;margin-bottom:6px}
+.lock-box p{color:var(--muted);font-size:13px;margin-bottom:18px}
+
+/* pay modal */
+.pay-summary{display:flex;gap:14px;align-items:center;background:rgba(10,7,20,.6);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:18px}
+.pay-summary .pthumb{width:86px;height:52px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden;flex-shrink:0}
+.pay-summary .pthumb img{width:100%;height:100%;object-fit:cover}
+.pay-summary h5{font-size:14.5px}
+.pay-summary small{color:var(--muted);font-size:12px}
+.pay-total{display:flex;justify-content:space-between;font-size:15px;margin:6px 2px 18px;color:var(--muted)}
+.pay-total b{font-size:20px;color:var(--gold)}
+.spinner{width:44px;height:44px;border-radius:50%;border:4px solid rgba(139,92,246,.2);border-top-color:var(--purple);animation:spin 0.8s linear infinite;margin:16px auto}
+.pay-status{text-align:center;padding:14px 0}
+.pay-status .ico{font-size:46px;margin-bottom:10px}
+.pay-note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.25)}
+.backend-warn{font-size:12px;color:var(--muted);line-height:1.7;margin-top:16px;padding:13px 15px;border-radius:12px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.22)}
+.backend-warn b{color:var(--gold)}
+
+/* ---------- ADMIN ---------- */
+.admin-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:start}
+.panel{background:linear-gradient(170deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:20px;padding:24px;box-shadow:var(--shadow)}
+.panel h3{font-size:17px;margin-bottom:18px;letter-spacing:.5px;display:flex;align-items:center;gap:10px}
+.panel h3 .dot{width:9px;height:9px;border-radius:50%;background:var(--purple);box-shadow:0 0 12px var(--purple)}
+.admin-row{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:14px;margin-bottom:10px;background:rgba(10,7,20,.4);flex-wrap:wrap}
+.admin-row .athumb{width:74px;height:44px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;overflow:hidden;flex-shrink:0}
+.admin-row .athumb img{width:100%;height:100%;object-fit:cover}
+.admin-row .ainfo{flex:1;min-width:150px}
+.admin-row .ainfo b{font-size:13.5px;display:block}
+.admin-row .ainfo small{color:var(--muted);font-size:11.5px}
+.row-actions{display:flex;gap:7px}
+.icon-btn{width:33px;height:33px;border-radius:9px;border:1px solid var(--line);background:rgba(139,92,246,.1);color:var(--violet);font-size:14px;transition:.2s}
+.icon-btn:hover{background:rgba(139,92,246,.3);transform:translateY(-2px)}
+.icon-btn.del{color:var(--danger);background:rgba(251,113,133,.08)}
+.icon-btn.del:hover{background:rgba(251,113,133,.3)}
+.file-drop{border:1.5px dashed rgba(168,85,247,.4);border-radius:14px;padding:18px;text-align:center;color:var(--muted);font-size:12.5px;cursor:pointer;transition:.25s;margin-bottom:14px}
+.file-drop:hover{border-color:var(--purple);background:rgba(139,92,246,.08)}
+.file-drop input{display:none}
+.switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border:1px solid var(--line);border-radius:13px;margin-bottom:12px;background:rgba(10,7,20,.4)}
+.switch-row small{display:block;color:var(--muted);font-size:11.5px;margin-top:3px;line-height:1.5}
+.switch{position:relative;width:46px;height:25px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:#2a2145;border-radius:999px;transition:.3s;cursor:pointer}
+.slider::before{content:"";position:absolute;width:19px;height:19px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.3s}
+.switch input:checked + .slider{background:linear-gradient(135deg,var(--purple),var(--purple2));box-shadow:0 0 14px rgba(139,92,246,.5)}
+.switch input:checked + .slider::before{transform:translateX(21px)}
+
+/* purchases */
+.purchase-row{display:flex;align-items:center;gap:16px;background:linear-gradient(170deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:15px 18px;margin-bottom:12px;flex-wrap:wrap;transition:.25s}
+.purchase-row:hover{border-color:rgba(168,85,247,.45)}
+.purchase-row .pthumb{width:96px;height:56px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:26px;overflow:hidden}
+.purchase-row .pthumb img{width:100%;height:100%;object-fit:cover}
+.pinfo{flex:1;min-width:170px}
+.pinfo b{font-size:15px}
+.pinfo small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.paid-pill{font-size:10.5px;font-weight:800;letter-spacing:1px;padding:5px 12px;border-radius:999px;background:rgba(52,211,153,.14);border:1px solid rgba(52,211,153,.4);color:var(--ok)}
+.paid-pill.demo{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4);color:var(--gold)}
+
+/* footer / toasts */
+.footer{padding:26px;text-align:center;color:var(--muted);font-size:11.5px;border-top:1px solid var(--line);line-height:1.8}
+.toast-zone{position:fixed;bottom:24px;right:24px;z-index:200;display:flex;flex-direction:column;gap:10px}
+.toast{
+  padding:13px 20px;border-radius:13px;font-size:13.5px;font-weight:600;color:#fff;
+  background:linear-gradient(135deg,var(--purple),var(--purple2));box-shadow:var(--shadow);
+  animation:toastIn .35s cubic-bezier(.2,.9,.3,1.3) both;max-width:330px;
+}
+.toast.err{background:linear-gradient(135deg,#e11d48,#fb7185)}
+.toast.ok{background:linear-gradient(135deg,#059669,#34d399)}
+@keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
+.toast.out{animation:toastOut .3s both}
+@keyframes toastOut{to{opacity:0;transform:translateX(40px)}}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width:860px){
+  .admin-grid{grid-template-columns:1fr}
+  .hero{padding:40px 26px}
+}
+@media (max-width:680px){
+  #hamburger{display:block;margin-left:auto}
+  .nav-links{
+    display:none;position:absolute;top:100%;left:0;right:0;flex-direction:column;align-items:stretch;
+    background:rgba(10,7,20,.97);border-bottom:1px solid var(--line);padding:12px;gap:6px;
+  }
+  .nav-links.open{display:flex}
+  .nav-link{text-align:left;padding:12px 16px}
+  .container{padding:24px 16px 60px}
+  .hero-stats{gap:22px}
+  .login-card{padding:36px 24px 28px}
+  .modal-body{padding:18px}
+  .purchase-row .pthumb{width:80px;height:48px}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN GATE ================= -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="brand-logo">▶</div>
+    <h1>LUMOS VIP</h1>
+    <p class="sub">Private premium streaming. Members only.</p>
+    <div class="login-error" id="loginError">✕ &nbsp;Incorrect password. Please try again.</div>
+    <div class="field">
+      <label for="pwInput">Access Password</label>
+      <input type="password" id="pwInput" placeholder="Enter your password" autocomplete="current-password">
+      <button class="eye-btn" id="eyeBtn" type="button" title="Show / hide password">👁</button>
+    </div>
+    <button class="btn btn-primary btn-block" id="loginBtn">Unlock Library ➜</button>
+    <p class="login-note">
+      This area is protected. Unauthorized access is not permitted.
+      <br><span class="demo-hint">⚠ Frontend demo gate — not real security</span>
+    </p>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app">
+  <nav class="navbar">
+    <div class="nav-brand"><div class="mini-logo">▶</div><span>LUMOS&nbsp;VIP</span></div>
+    <button id="hamburger">☰</button>
+    <div class="nav-links" id="navLinks">
+      <button class="nav-link active" data-view="home">🏠 Home</button>
+      <button class="nav-link" data-view="videos">🎬 Videos</button>
+      <button class="nav-link" data-view="purchases">🧾 My Purchases</button>
+      <button class="nav-link" data-view="admin">⚙ Admin</button>
+      <button class="nav-link" id="logoutBtn" title="Sign out">⏻</button>
+    </div>
+  </nav>
+
+  <main class="container">
+
+    <!-- HOME -->
+    <section class="view active" id="view-home">
+      <div class="hero">
+        <h2>Stream the extraordinary.<br>Only for the inner circle.</h2>
+        <p>Welcome to LUMOS VIP — a hand-curated, members-only premium video library. Purchase individual titles and watch them anytime, on any device.</p>
+        <button class="btn btn-primary" data-view="videos">Browse Library ➜</button>
+        <div class="hero-stats">
+          <div class="hstat"><b id="statVideos">0</b><small>Titles</small></div>
+          <div class="hstat"><b id="statCats">0</b><small>Categories</small></div>
+          <div class="hstat"><b id="statOwned">0</b><small>Your Purchases</small></div>
+        </div>
+      </div>
+      <div class="section-head"><h3>✨ Featured</h3><span class="count-pill">LATEST ADDITIONS</span></div>
+      <div class="grid" id="featuredGrid"></div>
+    </section>
+
+    <!-- VIDEOS -->
+    <section class="view" id="view-videos">
+      <div class="section-head"><h3>🎬 Video Library</h3><span class="count-pill" id="libCount"></span></div>
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="s-ico">🔍</span>
+          <input type="text" id="searchInput" placeholder="Search titles or descriptions…">
+        </div>
+        <div class="chip-row" id="chipRow"></div>
+      </div>
+      <div class="grid" id="videoGrid"></div>
+      <div class="empty" id="videosEmpty" style="display:none">
+        <span class="big">🎬</span>
+        <h4>No videos found</h4>
+        <p>The library is empty or nothing matches your search. Try another keyword, or ask the owner to add content from the Admin panel.</p>
+        <button class="btn btn-ghost" id="clearFiltersBtn">Clear Filters</button>
+      </div>
+    </section>
+
+    <!-- PURCHASES -->
+    <section class="view" id="view-purchases">
+      <div class="section-head"><h3>🧾 My Purchases</h3><span class="count-pill" id="purCount"></span></div>
+      <div id="purchaseList"></div>
+      <div class="empty" id="purchasesEmpty" style="display:none">
+        <span class="big">🧾</span>
+        <h4>No purchases yet</h4>
+        <p>Buy a premium title from the library and it will appear here, unlocked forever.</p>
+        <button class="btn btn-primary" data-view="videos">Explore Library ➜</button>
+      </div>
+      <p style="color:var(--muted);font-size:12px;margin-top:22px;line-height:1.7">
+        ⚠ Demo notice: purchase records live only in <b>this browser's localStorage</b>. They are not tied to an account and will not sync across devices. Real purchases require a backend with verified payment webhooks.
+      </p>
+    </section>
+
+    <!-- ADMIN -->
+    <section class="view" id="view-admin">
+      <!-- admin login -->
+      <div id="adminLock" class="empty" style="max-width:480px;margin:30px auto">
+        <span class="big">🔐</span>
+        <h4>Administrator Access</h4>
+        <p>Catalogue management is restricted. Enter the administrator password to continue.</p>
+        <div class="field" style="max-width:300px;margin:0 auto 6px">
+          <input type="password" id="adminPwInput" placeholder="Admin password">
+        </div>
+        <div class="login-error" id="adminPwError" style="max-width:300px;margin:10px auto">✕ &nbsp;Incorrect admin password.</div>
+        <button class="btn btn-primary" id="adminUnlockBtn">Unlock Admin ➜</button>
+        <p style="margin-top:16px;font-size:11px;color:var(--muted)">⚠ Demo gate only — use server-side authentication in production.</p>
+      </div>
+      <!-- admin dashboard -->
+      <div id="adminPanel" style="display:none">
+        <div class="section-head">
+          <h3>⚙ Admin Dashboard</h3>
+          <span class="count-pill">CATALOGUE MANAGER</span>
+          <button class="btn btn-ghost mini-btn" id="adminLockBtn" style="margin-left:auto">🔒 Lock Panel</button>
+        </div>
+        <div class="admin-grid">
+          <div class="panel">
+            <h3><span class="dot"></span>Manage Videos</h3>
+            <div id="adminList"></div>
+            <div class="empty" id="adminEmpty" style="display:none;padding:36px 16px">
+              <span class="big" style="font-size:40px">📭</span>
+              <h4 style="font-size:15px">No videos yet</h4>
+              <p style="font-size:12.5px">Add your first title using the form on the right.</p>
+            </div>
+          </div>
+          <div>
+            <div class="panel" style="margin-bottom:22px">
+              <h3><span class="dot"></span><span id="formTitle">Add New Video</span></h3>
+              <form id="videoForm">
+                <input type="hidden" id="fId">
+                <div class="field"><label>Video Title *</label><input id="fTitle" required placeholder="e.g. Neon Horizons"></div>
+                <div class="field"><label>Description</label><textarea id="fDesc" placeholder="Short synopsis…"></textarea></div>
+                <div class="field"><label>Category</label>
+                  <select id="fCat">
+                    <option>Action</option><option>Sci-Fi</option><option>Drama</option>
+                    <option>Comedy</option><option>Documentary</option><option>Horror</option>
+                  </select>
+                </div>
+                <div class="field"><label>Price (USD) *</label><input id="fPrice" type="number" min="0" step="0.01" required placeholder="4.99 — use 0 for free"></div>
+                <div class="field"><label>Duration</label><input id="fDur" placeholder="e.g. 1h 42m"></div>
+                <div class="field"><label>Thumbnail URL <span style="text-transform:none;color:var(--muted)">(optional)</span></label><input id="fThumb" placeholder="https://… leave blank for auto-art"></div>
+                <div class="field"><label>Video URL (MP4 / stream link)</label><input id="fUrl" placeholder="https://example.com/video.mp4"></div>
+                <label class="file-drop" id="fileDrop">
+                  📁 &nbsp;…or select a video file from this device
+                  <input type="file" id="fFile" accept="video/*">
+                </label>
+                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                  <button type="submit" class="btn btn-primary" style="flex:1">💾 Save Video</button>
+                  <button type="button" class="btn btn-ghost" id="formResetBtn">Reset</button>
+                </div>
+                <p style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.6">
+                  ⚠ Local files play via a temporary browser URL and vanish on refresh — real uploads need server/cloud storage (S3, Cloudflare R2, etc.).
+                </p>
+              </form>
+            </div>
+            <div class="panel">
+              <h3><span class="dot"></span>Payment Settings</h3>
+              <div class="switch-row">
+                <div><b style="font-size:13.5px">Demo Payment Mode</b>
+                  <small>Simulates a payment round-trip so you can test the full purchase flow. Clearly labelled as simulated — nothing is charged, nothing is verified.</small></div>
+                <label class="switch"><input type="checkbox" id="demoPayToggle"><span class="slider"></span></label>
+              </div>
+              <p style="font-size:12px;color:var(--muted);line-height:1.7">
+                <b style="color:var(--violet)">Production integration (requires a backend):</b><br>
+                1. Create a Stripe / PayHere account and obtain <b>secret keys — store them ONLY on your server</b>.<br>
+                2. Server creates a Checkout Session / payment intent per purchase.<br>
+                3. Listen to the provider's <b>webhook</b> (e.g. <code>checkout.session.completed</code>) and grant access only after signature-verified confirmation.<br>
+                4. Never trust the browser's "payment succeeded" signal.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    LUMOS VIP © 2026 — Private members streaming. &nbsp;•&nbsp;
+    Frontend demonstration: authentication, purchases and the video catalogue are simulated with localStorage and are <b>not secure</b>.<br>
+    A public launch requires server-side auth, a database, verified payment webhooks and secure video delivery. No card data is ever stored here.
+  </footer>
+</div>
+
+<!-- ================= PLAYER / DETAIL MODAL ================= -->
+<div class="modal-backdrop" id="playerModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="pmTitle">Video</h3><button class="x-btn" data-close="playerModal">✕</button></div>
+    <div class="modal-body" id="pmBody"></div>
+  </div>
+</div>
+
+<!-- ================= PURCHASE MODAL ================= -->
+<div class="modal-backdrop" id="buyModal">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-head"><h3>Complete Purchase</h3><button class="x-btn" data-close="buyModal">✕</button></div>
+    <div class="modal-body">
+      <div class="pay-summary" id="buySummary"></div>
+      <div class="pay-total"><span>Total due</span><b id="buyTotal">$0.00</b></div>
+      <button class="btn btn-primary btn-block" id="buyPayBtn">🔒 Proceed to Secure Payment</button>
+      <p class="pay-note">🔒 Payments are processed by a verified provider. Access is granted <b>only</b> after the provider confirms the payment server-side.</p>
+      <div class="backend-warn" id="payCfgWarn" style="display:none">
+        <b>⚠ Payment provider not configured.</b><br>
+        This demo ships with no live keys. Ask the owner to enable <b>Demo Payment Mode</b> in the Admin panel to test the flow, or connect Stripe / PayHere via a backend (see Admin → Payment Settings). Purchases are never granted without a verified payment event.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= PAY PROCESSING MODAL ================= -->
+<div class="modal-backdrop" id="payModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head"><h3>Payment</h3><button class="x-btn" data-close="payModal">✕</button></div>
+    <div class="modal-body" id="payBody"></div>
+  </div>
+</div>
+
+<div class="toast-zone" id="toastZone"></div>
+
+<script>
+/* ==========================================================
+   CONFIG & SECURITY CONSTANTS
+   ⚠ These are DEMO-ONLY gates. Anyone can view-source this
+   file, so these passwords provide ZERO real protection.
+   Replace with server-side sessions/JWT auth in production.
+   ========================================================== */
+const ACCESS_PASSWORD = "hptq 536";   // demo visitor gate
+const ADMIN_PASSWORD  = "lumos-admin"; // demo admin gate — CHANGE & move server-side
+
+/* ==========================================================
+   PAYMENT PROVIDER PLACEHOLDER (backend required)
+   ------------------------------------------------------------
+   To go live you MUST build a small backend:
+   • Stripe:  POST /create-checkout-session  → redirect to
+     session.url; webhook `checkout.session.completed`
+     (signature verified) → mark purchase in DB.
+   • PayHere: preapproval/hash via server, notify_url webhook
+     verified with the merchant secret → mark purchase in DB.
+   NEVER put secret keys in this HTML. NEVER grant access from
+   the browser alone. NEVER store card numbers anywhere.
+   ========================================================== */
+const LS = { videos:"lumos_videos_v1", purchases:"lumos_purchases_v1", paycfg:"lumos_paycfg_v1", admin:"lumos_admin_ok" };
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const money = n => n <= 0 ? "FREE" : "$" + Number(n).toFixed(2);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+/* ---------- gradient art thumbs ---------- */
+const GRADS = [
+  "linear-gradient(135deg,#4c1d95,#8b5cf6)","linear-gradient(135deg,#701a75,#d946ef)",
+  "linear-gradient(135deg,#312e81,#6366f1)","linear-gradient(135deg,#7c2d12,#f97316)",
+  "linear-gradient(135deg,#064e3b,#10b981)","linear-gradient(135deg,#7f1d1d,#ef4444)",
+  "linear-gradient(135deg,#1e3a8a,#38bdf8)","linear-gradient(135deg,#3b0764,#c026d3)"
+];
+const gradFor = id => GRADS[[...String(id)].reduce((a,c)=>a+c.charCodeAt(0),0) % GRADS.length];
+
+const SAMPLE = "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
+const SEED = [
+  {id:"seed1",title:"Neon Horizons",desc:"A rogue pilot chases a signal across a rain-soaked megacity in this stylish sci-fi thriller.",cat:"Sci-Fi",price:4.99,dur:"1h 42m",emoji:"🌃",url:SAMPLE,thumb:""},
+  {id:"seed2",title:"The Last Reel",desc:"An archivist discovers a lost film that rewrites the town's history — and her own.",cat:"Drama",price:3.49,dur:"1h 58m",emoji:"🎞️",url:SAMPLE,thumb:""},
+  {id:"seed3",title:"Iron Cascade",desc:"Elite operatives descend a frozen waterfall to stop a signal nobody was meant to hear.",cat:"Action",price:5.99,dur:"2h 05m",emoji:"💥",url:SAMPLE,thumb:""},
+  {id:"seed4",title:"Laugh Circuit",desc:"A failing comedian's AI sidekick becomes funnier than him. A problem. A big one.",cat:"Comedy",price:2.99,dur:"1h 28m",emoji:"🤖",url:SAMPLE,thumb:""},
+  {id:"seed5",title:"Deep Field",desc:"Journey past the edge of the observable universe with the world's greatest telescopes.",cat:"Documentary",price:0,dur:"54m",emoji:"🔭",url:SAMPLE,thumb:""},
+  {id:"seed6",title:"The Hollow House",desc:"Every family has secrets. This one has a room that should not exist.",cat:"Horror",price:4.49,dur:"1h 36m",emoji:"👻",url:SAMPLE,thumb:""}
+];
+
+/* ---------- state ---------- */
+let videos = load(LS.videos, null);
+if (!videos) { videos = SEED; save(LS.videos, videos); }
+let purchases = load(LS.purchases, []);
+let payCfg    = load(LS.paycfg, { demo:false });
+let adminOk   = sessionStorage.getItem(LS.admin) === "1";
+let activeCat = "All", searchQ = "", pendingBuy = null, editingId = null;
+
+function load(k, fb){ try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; }catch{ return fb; } }
+function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ toast("Storage full — could not save.", "err"); } }
+const isOwned = id => purchases.some(p => p.videoId === id);
+const uid = () => "v" + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+
+/* ---------- toast ---------- */
+function toast(msg, type){
+  const t = document.createElement("div");
+  t.className = "toast " + (type || "");
+  t.textContent = msg;
+  $("#toastZone").appendChild(t);
+  setTimeout(()=>{ t.classList.add("out"); setTimeout(()=>t.remove(), 320); }, 3200);
+}
+
+/* ==========================================================
+   AUTH GATE (demo)
+   ========================================================== */
+$("#pwInput").addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
+$("#loginBtn").addEventListener("click", tryLogin);
+$("#eyeBtn").addEventListener("click", () => {
+  const i = $("#pwInput");
+  i.type = i.type === "password" ? "text" : "password";
+  $("#eyeBtn").textContent = i.type === "password" ? "👁" : "🙈";
+  i.focus();
+});
+function tryLogin(){
+  if ($("#pwInput").value === ACCESS_PASSWORD){
+    sessionStorage.setItem("lumos_auth","1");
+    enterApp();
+  } else {
+    const e = $("#loginError"); e.classList.remove("show"); void e.offsetWidth; e.classList.add("show");
+    $("#pwInput").value = ""; $("#pwInput").focus();
+  }
+}
+function enterApp(){
+  $("#loginScreen").classList.add("hidden");
+  $("#app").classList.add("active");
+  renderAll();
+}
+if (sessionStorage.getItem("lumos_auth") === "1") enterApp();
+
+$("#logoutBtn").addEventListener("click", () => {
+  sessionStorage.removeItem("lumos_auth"); sessionStorage.removeItem(LS.admin);
+  location.reload();
+});
+
+/* ==========================================================
+   NAVIGATION
+   ========================================================== */
+$("#hamburger").addEventListener("click", () => $("#navLinks").classList.toggle("open"));
+document.addEventListener("click", e => {
+  const v = e.target.closest("[data-view]");
+  if (!v) return;
+  $$(".view").forEach(x => x.classList.remove("active"));
+  $("#view-" + v.dataset.view).classList.add("active");
+  $$(".nav-link").forEach(x => x.classList.toggle("active", x.dataset.view === v.dataset.view));
+  $("#navLinks").classList.remove("open");
+  window.scrollTo({top:0, behavior:"smooth"});
+  if (v.dataset.view === "admin") renderAdmin();
+  if (v.dataset.view === "purchases") renderPurchases();
+});
+
+/* ==========================================================
+   RENDERING
+   ========================================================== */
+function thumbHTML(v){
+  const inner = v.thumb ? `<img src="${esc(v.thumb)}" alt="" onerror="this.remove()">` : "";
+  return `<div class="grad" style="background:${gradFor(v.id)}"></div><span class="emoji">${esc(v.emoji || "🎬")}</span>${inner}`;
+}
+function cardHTML(v){
+  const owned = isOwned(v.id);
+  return `<article class="vcard" data-id="${v.id}">
+    <div class="thumb">${thumbHTML(v)}
+      ${v.dur ? `<span class="dur">${esc(v.dur)}</span>` : ""}
+      ${owned ? `<span class="badge-owned">✓ OWNED</span>` : ""}
+    </div>
+    <div class="vbody">
+      <span class="cat">${esc(v.cat)}</span>
+      <h4>${esc(v.title)}</h4>
+      <p>${esc(v.desc || "")}</p>
+      <div class="vfoot">
+        <span class="price ${v.price <= 0 ? "free" : ""}">${money(v.price)}</span>
+        <button class="btn btn-ghost mini-btn">${owned ? "▶ Watch" : (v.price > 0 ? "Unlock" : "Watch Free")}</button>
+      </div>
+    </div>
+  </article>`;
+}
+function renderAll(){ renderHome(); renderChips(); renderGrid(); renderStats(); }
+function renderStats(){
+  $("#statVideos").textContent = videos.length;
+  $("#statCats").textContent = new Set(videos.map(v => v.cat)).size;
+  $("#statOwned").textContent = purchases.length;
+}
+function renderHome(){
+  $("#featuredGrid").innerHTML = videos.slice(0,4).map(cardHTML).join("") ||
+    `<div class="empty" style="grid-column:1/-1"><span class="big">🎬</span><h4>Library is empty</h4><p>Visit the Admin panel to add your first title.</p></div>`;
+}
+function renderChips(){
+  const cats = ["All", ...new Set(videos.map(v => v.cat))];
+  $("#chipRow").innerHTML = cats.map(c =>
+    `<button class="chip ${c === activeCat ? "active" : ""}" data-cat="${esc(c)}">${esc(c)}</button>`).join("");
+}
+function renderGrid(){
+  const q = searchQ.trim().toLowerCase();
+  const list = videos.filter(v =>
+    (activeCat === "All" || v.cat === activeCat) &&
+    (!q || (v.title + " " + (v.desc || "")).toLowerCase().includes(q)));
+  $("#videoGrid").innerHTML = list.map(cardHTML).join("");
+  $("#videosEmpty").style.display = list.length ? "none" : "block";
+  $("#libCount").textContent = list.length + " TITLE" + (list.length === 1 ? "" : "S");
+}
+$("#searchInput").addEventListener("input", e => { searchQ = e.target.value; renderGrid(); });
+$("#chipRow").addEventListener("click", e => {
+  const c = e.target.closest(".chip"); if (!c) return;
+  activeCat = c.dataset.cat; renderChips(); renderGrid();
+});
+$("#clearFiltersBtn").addEventListener("click", () => {
+  searchQ = ""; activeCat = "All"; $("#searchInput").value = ""; renderChips(); renderGrid();
+});
+
+/* card click → details */
+document.addEventListener("click", e => {
+  const card = e.target.closest(".vcard");
+  if (card && !e.target.closest(".admin-row")) openPlayer(card.dataset.id);
+});
+
+/* ==========================================================
+   PLAYER / DETAIL MODAL
+   ========================================================== */
+function openPlayer(id){
+  const v = videos.find(x => x.id === id); if (!v) return;
+  $("#pmTitle").textContent = v.title;
+  const owned = isOwned(id) || v.price <= 0;
+  $("#pmBody").innerHTML = `
+    ${owned
+      ? `<div class="player-wrap"><video controls playsinline src="${esc(v.url)}" poster="${esc(v.thumb || "")}"></video></div>
+         ${v.price > 0 ? `<p style="margin-top:12px;font-size:12px;color:var(--ok)">✓ Purchased — full access granted.</p>` : ""}`
+      : `<div class="lock-box">
+           <div class="lock">🔒</div>
+           <h4>Premium Content</h4>
+           <p>This title is available for <b style="color:var(--gold)">${money(v.price)}</b>. Purchase to unlock instant playback.</p>
+           <button class="btn btn-primary" id="pmBuyBtn">🔓 Unlock for ${money(v.price)}</button>
+         </div>`}
+    <h4 class="detail-title">${esc(v.title)}</h4>
+    <p class="detail-desc">${esc(v.desc || "No description provided.")}</p>
+    <div class="meta-row">
+      <span class="meta-tag">🏷 ${esc(v.cat)}</span>
+      ${v.dur ? `<span class="meta-tag">⏱ ${esc(v.dur)}</span>` : ""}
+      <span class="meta-tag">${v.price > 0 ? "💳 " + money(v.price) : "🎁 Free"}</span>
+    </div>`;
+  openModal("playerModal");
+  const b = $("#pmBuyBtn");
+  if (b) b.addEventListener("click", () => { closeModal("playerModal"); openBuy(id); });
+}
+$$("[data-close]").forEach(b => b.addEventListener("click", () => {
+  closeModal(b.dataset.close);
+  if (b.dataset.close === "playerModal") { const v = $("#pmBody video"); if (v) v.pause(); }
+}));
+$$(".modal-backdrop").forEach(m => m.addEventListener("click", e => {
+  if (e.target === m){
+    if (m.id === "playerModal"){ const v = $("#pmBody video"); if (v) v.pause(); }
+    closeModal(m.id);
+  }
+}));
+function openModal(id){ $("#"+id).classList.add("open"); document.body.style.overflow = "hidden"; }
+function closeModal(id){ $("#"+id).classList.remove("open"); document.body.style.overflow = ""; }
+
+/* ==========================================================
+   PURCHASE FLOW — never grants access without a payment event
+   ========================================================== */
+function openBuy(id){
+  const v = videos.find(x => x.id === id); if (!v) return;
+  pendingBuy = id;
+  $("#buySummary").innerHTML = `
+    <div class="pthumb" style="background:${gradFor(v.id)}">${v.thumb ? `<img src="${esc(v.thumb)}" alt="">` : esc(v.emoji || "🎬")}</div>
+    <div><h5>${esc(v.title)}</h5><small>${esc(v.cat)}${v.dur ? " • " + esc(v.dur) : ""}</small></div>`;
+  $("#buyTotal").textContent = money(v.price);
+  $("#payCfgWarn").style.display = payCfg.demo ? "none" : "block";
+  $("#buyPayBtn").disabled = !payCfg.demo;
+  $("#buyPayBtn").textContent = payCfg.demo ? "🔒 Proceed to Secure Payment" : "Payment Not Configured";
+  openModal("buyModal");
+}
+$("#buyPayBtn").addEventListener("click", () => {
+  if (!pendingBuy || !payCfg.demo) return;
+  const v = videos.find(x => x.id === pendingBuy);
+  closeModal("buyModal");
+  runPayment(v);
+});
+function runPayment(v){
+  /* ---- DEMO SIMULATION ------------------------------------
+     This only runs when the OWNER has explicitly enabled
+     "Demo Payment Mode" in the Admin panel. It mimics the
+     provider round-trip so the UX can be tested end-to-end.
+     It charges nothing and verifies nothing. In production
+     this entire function is replaced by a redirect to your
+     backend-created Stripe Checkout / PayHere session, with
+     access granted ONLY by a verified webhook. */
+  $("#payBody").innerHTML = `
+    <div class="pay-status">
+      <div class="spinner"></div>
+      <p style="color:var(--muted);font-size:13px">Contacting payment provider…<br><small>Do not close this window.</small></p>
+    </div>`;
+  openModal("payModal");
+  setTimeout(() => {
+    $("#payBody").innerHTML = `
+      <div class="pay-status">
+        <div class="ico">✅</div>
+        <h4 style="margin-bottom:6px">Demo Payment Verified</h4>
+        <p style="color:var(--muted);font-size:12.5px;line-height:1.6">
+          <b style="color:var(--gold)">SIMULATED</b> — no real charge occurred.<br>
+          In production this confirmation arrives from a Stripe/PayHere webhook.
+        </p>
+        <button class="btn btn-primary btn-block" id="payDoneBtn" style="margin-top:18px">▶ Start Watching</button>
+      </div>`;
+    purchases.push({ videoId:v.id, title:v.title, price:v.price, date:new Date().toISOString(), status:"simulated" });
+    save(LS.purchases, purchases);
+    renderAll();
+    $("#payDoneBtn").addEventListener("click", () => { closeModal("payModal"); openPlayer(v.id); });
+  }, 2200);
+}
+
+/* ==========================================================
+   PURCHASES VIEW
+   ========================================================== */
+function renderPurchases(){
+  const list = [...purchases].reverse();
+  $("#purchaseList").innerHTML = list.map(p => {
+    const v = videos.find(x => x.id === p.videoId) || {};
+    return `<div class="purchase-row">
+      <div class="pthumb" style="background:${gradFor(p.videoId)}">${v.thumb ? `<img src="${esc(v.thumb)}" alt="">` : esc(v.emoji || "🎬")}</div>
+      <div class="pinfo"><b>${esc(p.title)}</b><small>${new Date(p.date).toLocaleString()} • ${money(p.price)}</small></div>
+      <span class="paid-pill ${p.status === "simulated" ? "demo" : ""}">${p.status === "simulated" ? "⚡ DEMO" : "✓ PAID"}</span>
+      <button class="btn btn-primary mini-btn" data-watch="${p.videoId}">▶ Watch</button>
+    </div>`;
+  }).join("");
+  $("#purchasesEmpty").style.display = list.length ? "none" : "block";
+  $("#purCount").textContent = list.length + " PURCHASE" + (list.length === 1 ? "" : "S");
+}
+document.addEventListener("click", e => {
+  const w = e.target.closest("[data-watch]");
+  if (w) openPlayer(w.dataset.watch);
+});
+
+/* ==========================================================
+   ADMIN (demo-gated)
+   ========================================================== */
+$("#adminUnlockBtn").addEventListener("click", () => {
+  if ($("#adminPwInput").value === ADMIN_PASSWORD){
+    adminOk = true; sessionStorage.setItem(LS.admin, "1"); renderAdmin();
+    toast("Admin panel unlocked.", "ok");
+  } else {
+    const e = $("#adminPwError"); e.classList.remove("show"); void e.offsetWidth; e.classList.add("show");
+  }
+});
+$("#adminPwInput").addEventListener("keydown", e => { if (e.key === "Enter") $("#adminUnlockBtn").click(); });
+$("#adminLockBtn").addEventListener("click", () => {
+  adminOk = false; sessionStorage.removeItem(LS.admin); renderAdmin(); toast("Admin panel locked.");
+});
+function renderAdmin(){
+  $("#adminLock").style.display = adminOk ? "none" : "block";
+  $("#adminPanel").style.display = adminOk ? "block" : "none";
+  if (!adminOk) return;
+  $("#adminList").innerHTML = videos.map(v => `
+    <div class="admin-row">
+      <div class="athumb" style="background:${gradFor(v.id)}">${v.thumb ? `<img src="${esc(v.thumb)}" alt="">` : esc(v.emoji || "🎬")}</div>
+      <div class="ainfo"><b>${esc(v.title)}</b><small>${esc(v.cat)} • ${money(v.price)}${v.dur ? " • " + esc(v.dur) : ""}</small></div>
+      <div class="row-actions">
+        <button class="icon-btn" data-edit="${v.id}" title="Edit">✏️</button>
+        <button class="icon-btn del" data-del="${v.id}" title="Delete">🗑</button>
+      </div>
+    </div>`).join("");
+  $("#adminEmpty").style.display = videos.length ? "none" : "block";
+  $("#demoPayToggle").checked = !!payCfg.demo;
+}
+
+/* add / edit form */
+$("#fileDrop").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (f){ $("#fUrl").value = URL.createObjectURL(f); toast("Local file attached (temporary demo URL)."); }
+});
+$("#formResetBtn").addEventListener("click", resetForm);
+function resetForm(){
+  $("#videoForm").reset(); editingId = null; $("#fId").value = "";
+  $("#formTitle").textContent = "Add New Video";
+}
+$("#videoForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const title = $("#fTitle").value.trim();
+  const price = parseFloat($("#fPrice").value);
+  const url   = $("#fUrl").value.trim();
+  if (!title || isNaN(price)){ toast("Title and a valid price are required.", "err"); return; }
+  if (!url){ toast("Provide a video URL or select a file.", "err"); return; }
+  const data = {
+    title, price: Math.max(0, price), url,
+    desc: $("#fDesc").value.trim(), cat: $("#fCat").value,
+    dur: $("#fDur").value.trim(), thumb: $("#fThumb").value.trim(),
+    emoji: $("#fTitle").value.trim().charAt(0).toUpperCase() || "🎬"
+  };
+  if (editingId){
+    const i = videos.findIndex(v => v.id === editingId);
+    if (i > -1) videos[i] = { ...videos[i], ...data };
+    toast("Video updated.", "ok");
+  } else {
+    videos.unshift({ id: uid(), ...data });
+    toast("Video added to library.", "ok");
+  }
+  save(LS.videos, videos); resetForm(); renderAdmin(); renderAll();
+});
+$("#adminList").addEventListener("click", e => {
+  const del = e.target.closest("[data-del]"), ed = e.target.closest("[data-edit]");
+  if (del){
+    const v = videos.find(x => x.id === del.dataset.del);
+    if (confirm(`Delete "${v.title}"? Purchases already made are kept in the purchases list.`)){
+      videos = videos.filter(x => x.id !== del.dataset.del);
+      save(LS.videos, videos); renderAdmin(); renderAll(); toast("Video deleted.", "ok");
+    }
+  }
+  if (ed){
+    const v = videos.find(x => x.id === ed.dataset.edit); if (!v) return;
+    editingId = v.id;
+    $("#fId").value = v.id; $("#fTitle").value = v.title; $("#fDesc").value = v.desc || "";
+    $("#fCat").value = v.cat; $("#fPrice").value = v.price; $("#fDur").value = v.dur || "";
+    $("#fThumb").value = v.thumb || ""; $("#fUrl").value = v.url;
+    $("#formTitle").textContent = "Edit: " + v.title;
+    $("#videoForm").scrollIntoView({behavior:"smooth", block:"center"});
+  }
+});
+$("#demoPayToggle").addEventListener("change", e => {
+  payCfg.demo = e.target.checked; save(LS.paycfg, payCfg);
+  toast(payCfg.demo ? "Demo Payment Mode ON (clearly labelled, charges nothing)." : "Demo Payment Mode OFF — no payments can complete.", payCfg.demo ? "ok" : "");
+});
+</script>
+</body>
+</html>
